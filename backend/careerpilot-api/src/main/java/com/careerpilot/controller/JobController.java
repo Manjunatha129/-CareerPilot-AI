@@ -24,6 +24,18 @@ public class JobController {
         ));
     }
 
+    @PostMapping("/ingest/live")
+    public ResponseEntity<ApiResponse<String>> ingestLiveJobs(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "location", required = false) String location
+    ) {
+        int importedCount = jobService.fetchAndIngestLiveJobs(search, location);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Successfully fetched and ingested " + importedCount + " real live job postings from external APIs",
+                "Live jobs import completed"
+        ));
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<JobDTO>>> searchJobs(
             @RequestParam(value = "search", required = false) String search,

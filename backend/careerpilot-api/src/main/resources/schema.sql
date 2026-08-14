@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     title VARCHAR(255) NOT NULL,
     source_name VARCHAR(100) DEFAULT 'SEED_DATA',
     external_job_id VARCHAR(255),
+    source_url VARCHAR(1024),
     location VARCHAR(100),
     work_mode VARCHAR(50) DEFAULT 'HYBRID',
     employment_type VARCHAR(50) DEFAULT 'FULL_TIME',

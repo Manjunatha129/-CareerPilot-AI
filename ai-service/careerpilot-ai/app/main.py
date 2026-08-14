@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
@@ -12,9 +13,15 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+cors_env = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if cors_env.strip():
+    allowed_origins = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
+else:
+    allowed_origins = ["http://localhost:5173", "http://localhost:8080"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8080"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,4 +52,6 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
+

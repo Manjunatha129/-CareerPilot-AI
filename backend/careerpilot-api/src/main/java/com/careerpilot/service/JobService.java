@@ -31,6 +31,9 @@ import java.util.stream.Collectors;
 public class JobService {
 
     private final SeedJobSourceConnector seedJobSourceConnector;
+    private final RemotiveJobSourceConnector remotiveJobSourceConnector;
+    private final ArbeitnowJobSourceConnector arbeitnowJobSourceConnector;
+    private final AdzunaJobSourceConnector adzunaJobSourceConnector;
     private final JobNormalizer jobNormalizer;
     private final JobValidator jobValidator;
     private final JobDeduplicator jobDeduplicator;
@@ -52,6 +55,35 @@ public class JobService {
         log.info("Starting idempotent seed job ingestion...");
         List<RawJobData> rawJobs = seedJobSourceConnector.fetchRawJobs();
         return processAndPersistRawJobs(rawJobs);
+    }
+
+    /**
+     * Fetches real live job postings from public/official job APIs (Remotive, Arbeitnow, Adzuna).
+     */
+    @Transactional
+    public int fetchAndIngestLiveJobs(String search, String location) {
+        log.info("Fetching real job listings from external APIs (search='{}', location='{}')...", search, location);
+        List<RawJobData> liveJobs = new ArrayList<>();
+        try {
+            liveJobs.addAll(remotiveJobSourceConnector.fetchRawJobsByQuery(search, location));
+        } catch (Exception e) {
+            log.warn("Remotive API fetch error: {}", e.getMessage());
+        }
+        try {
+            liveJobs.addAll(arbeitnowJobSourceConnector.fetchRawJobsByQuery(search, location));
+        } catch (Exception e) {
+            log.warn("Arbeitnow API fetch error: {}", e.getMessage());
+        }
+        try {
+            liveJobs.addAll(adzunaJobSourceConnector.fetchRawJobsByQuery(search, "us"));
+        } catch (Exception e) {
+            log.warn("Adzuna API fetch error: {}", e.getMessage());
+        }
+
+        if (!liveJobs.isEmpty()) {
+            return processAndPersistRawJobs(liveJobs);
+        }
+        return 0;
     }
 
     @Transactional
@@ -92,6 +124,7 @@ public class JobService {
                 jobToSave.setExperienceLevel(normalized.getExperienceLevel());
                 jobToSave.setMinSalary(normalized.getMinSalary());
                 jobToSave.setMaxSalary(normalized.getMaxSalary());
+                jobToSave.setSourceUrl(normalized.getSourceUrl());
                 jobToSave.setDescriptionRaw(normalized.getDescription());
             } else {
                 log.info("Inserting new job posting ('{}' at '{}')", normalized.getTitle(), company.getName());
@@ -101,6 +134,7 @@ public class JobService {
                         .title(normalized.getTitle())
                         .sourceName(normalized.getSourceName())
                         .externalJobId(normalized.getId())
+                        .sourceUrl(normalized.getSourceUrl())
                         .location(normalized.getLocation())
                         .workMode(normalized.getWorkMode())
                         .employmentType(normalized.getEmploymentType())
@@ -151,7 +185,7 @@ public class JobService {
         return processedCount;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PageResponse<JobDTO> searchJobs(
             String search,
             String location,
@@ -165,14 +199,22 @@ public class JobService {
             String sortBy,
             String sortDirection
     ) {
+        String cleanSearch = cleanString(search);
+        String cleanLocation = cleanString(location);
+
+        // Fetch live jobs from real open-source APIs if search term is provided or DB is empty
+        if (cleanSearch != null || cleanLocation != null || jobRepository.count() == 0) {
+            fetchAndIngestLiveJobs(cleanSearch != null ? cleanSearch : "developer", cleanLocation);
+        }
+
         String cleanSort = (sortBy != null && ALLOWED_SORT_FIELDS.contains(sortBy)) ? sortBy : "createdAt";
         Sort.Direction direction = "ASC".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, cleanSort));
 
         Page<Job> jobPage = jobRepository.searchJobs(
-                cleanString(search),
-                cleanString(location),
+                cleanSearch,
+                cleanLocation,
                 cleanString(workMode),
                 cleanString(employmentType),
                 cleanString(experienceLevel),

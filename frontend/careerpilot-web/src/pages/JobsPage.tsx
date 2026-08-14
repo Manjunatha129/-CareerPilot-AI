@@ -470,13 +470,15 @@ export const JobsPage: React.FC = () => {
 
                   {/* Open Source Job Platform Badge */}
                   <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
-                    job.sourceName === 'Naukri' || job.sourceLabel?.includes('Naukri')
+                    job.sourceName === 'Remotive' || job.sourceLabel?.includes('Remotive')
+                      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                      : job.sourceName === 'Arbeitnow' || job.sourceLabel?.includes('Arbeitnow')
                       ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                      : job.sourceName === 'Indeed' || job.sourceLabel?.includes('Indeed')
+                      : job.sourceName === 'Adzuna' || job.sourceLabel?.includes('Adzuna')
                       ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                       : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                   }`}>
-                    💼 {job.sourceLabel || 'LinkedIn Jobs'}
+                    💼 {job.sourceLabel || job.sourceName || 'Job Listing'}
                   </span>
                 </div>
 
@@ -522,15 +524,21 @@ export const JobsPage: React.FC = () => {
 
               {/* Action Buttons: Apply Direct & View Details */}
               <div className="flex flex-col sm:flex-row items-center gap-2.5 flex-shrink-0">
-                <a
-                  href={job.applyUrl || `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(job.title)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs transition-all shadow-md cursor-pointer"
-                >
-                  <span>Apply on {job.sourceName || 'LinkedIn'}</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+                {job.applyUrl ? (
+                  <a
+                    href={job.applyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs transition-all shadow-md cursor-pointer"
+                  >
+                    <span>Apply on {job.sourceLabel || job.sourceName || 'Official Site'}</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                ) : (
+                  <span className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-slate-800 text-slate-400 font-bold text-xs border border-slate-700 cursor-not-allowed">
+                    <span>Sample Job Record</span>
+                  </span>
+                )}
 
                 <Link
                   to={`/jobs/${job.id}`}

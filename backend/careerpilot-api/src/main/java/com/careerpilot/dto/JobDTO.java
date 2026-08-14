@@ -55,12 +55,14 @@ public class JobDTO {
                 .map(JobSkill::getSkillName)
                 .collect(Collectors.toList()) : List.of();
 
-        String rawSource = (job.getSourceName() != null && !job.getSourceName().isBlank() && !"SEED_DATA".equalsIgnoreCase(job.getSourceName()))
+        String rawSource = (job.getSourceName() != null && !job.getSourceName().isBlank())
                 ? job.getSourceName()
-                : resolvePlatformByTitle(job.getTitle(), job.getId());
+                : "SEED_DATA";
 
         String formattedLabel = formatPlatformLabel(rawSource);
-        String directApplyUrl = buildApplyUrl(rawSource, job.getTitle(), job.getLocation());
+        String directApplyUrl = (job.getSourceUrl() != null && !job.getSourceUrl().isBlank())
+                ? job.getSourceUrl()
+                : null;
 
         return JobDTO.builder()
                 .id(job.getId())
@@ -87,33 +89,12 @@ public class JobDTO {
                 .build();
     }
 
-    private static String resolvePlatformByTitle(String title, Long jobId) {
-        if (jobId == null) return "LinkedIn";
-        long rem = jobId % 3;
-        if (rem == 1) return "LinkedIn";
-        if (rem == 2) return "Naukri";
-        return "Indeed";
-    }
-
     private static String formatPlatformLabel(String platform) {
-        if ("Naukri".equalsIgnoreCase(platform)) return "Naukri.com";
-        if ("Indeed".equalsIgnoreCase(platform)) return "Indeed Jobs";
-        if ("Glassdoor".equalsIgnoreCase(platform)) return "Glassdoor";
-        return "LinkedIn Jobs";
-    }
-
-    private static String buildApplyUrl(String platform, String title, String location) {
-        try {
-            String query = URLEncoder.encode(title + " " + (location != null ? location : ""), StandardCharsets.UTF_8);
-            if ("Naukri".equalsIgnoreCase(platform)) {
-                return "https://www.naukri.com/" + URLEncoder.encode(title.toLowerCase().replace(" ", "-"), StandardCharsets.UTF_8) + "-jobs";
-            }
-            if ("Indeed".equalsIgnoreCase(platform)) {
-                return "https://www.indeed.com/jobs?q=" + query;
-            }
-            return "https://www.linkedin.com/jobs/search/?keywords=" + query;
-        } catch (Exception e) {
-            return "https://www.linkedin.com/jobs/";
-        }
+        if (platform == null || "SEED_DATA".equalsIgnoreCase(platform)) return "Sample Dataset";
+        if ("Remotive".equalsIgnoreCase(platform)) return "Remotive Jobs";
+        if ("Arbeitnow".equalsIgnoreCase(platform)) return "Arbeitnow Jobs";
+        if ("Adzuna".equalsIgnoreCase(platform)) return "Adzuna Jobs";
+        if ("Jobacy".equalsIgnoreCase(platform)) return "Jobacy Jobs";
+        return platform;
     }
 }

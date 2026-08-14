@@ -33,6 +33,15 @@ class JobServiceTest {
     @Mock
     private SeedJobSourceConnector seedJobSourceConnector;
 
+    @Mock
+    private RemotiveJobSourceConnector remotiveJobSourceConnector;
+
+    @Mock
+    private ArbeitnowJobSourceConnector arbeitnowJobSourceConnector;
+
+    @Mock
+    private AdzunaJobSourceConnector adzunaJobSourceConnector;
+
     @Spy
     private JobNormalizer jobNormalizer = new JobNormalizer();
 
@@ -154,7 +163,7 @@ class JobServiceTest {
         assertNotNull(pageResponse);
         assertEquals(1, pageResponse.getContent().size());
         assertEquals("Junior Java Developer", pageResponse.getContent().get(0).getTitle());
-        assertEquals("SYNTHETIC / SAMPLE DATA", pageResponse.getContent().get(0).getSourceLabel());
+        assertEquals("Sample Dataset", pageResponse.getContent().get(0).getSourceLabel());
     }
 
     @Test

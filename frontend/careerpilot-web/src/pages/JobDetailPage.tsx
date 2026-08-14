@@ -248,15 +248,21 @@ export const JobDetailPage: React.FC = () => {
 
             {/* Action Buttons Row */}
             <div className="flex flex-wrap items-center gap-2">
-              <a
-                href={job.applyUrl || `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(job.title)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-5 py-3 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md transition-all flex items-center gap-2 cursor-pointer"
-              >
-                <span>Apply on {job.sourceName || 'LinkedIn'}</span>
-                <ExternalLink className="w-4 h-4" />
-              </a>
+              {job.applyUrl ? (
+                <a
+                  href={job.applyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-5 py-3 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <span>Apply on {job.sourceLabel || job.sourceName || 'Official Site'}</span>
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              ) : (
+                <span className="px-5 py-3 rounded-xl text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed">
+                  <span>Sample Job Record</span>
+                </span>
+              )}
 
               <button
                 onClick={handleToggleSave}

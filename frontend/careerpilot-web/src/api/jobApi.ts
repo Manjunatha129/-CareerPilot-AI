@@ -1,8 +1,17 @@
 import { apiClient } from './client';
 import { ApiResponse, JobDTO, PageResponse, JobSearchParams } from '../types';
 
+let defaultJobsCache: ApiResponse<PageResponse<JobDTO>> | null = null;
+let lastJobsFetchTime = 0;
+const CACHE_TTL_MS = 30000;
+
 export const jobApi = {
-  searchJobs: async (params: JobSearchParams = {}): Promise<ApiResponse<PageResponse<JobDTO>>> => {
+  searchJobs: async (params: JobSearchParams = {}, forceRefresh = false): Promise<ApiResponse<PageResponse<JobDTO>>> => {
+    const isDefaultQuery = !params.search && !params.location && !params.workMode && !params.employmentType && (!params.page || params.page === 0);
+    if (isDefaultQuery && !forceRefresh && defaultJobsCache && (Date.now() - lastJobsFetchTime < CACHE_TTL_MS)) {
+      return defaultJobsCache;
+    }
+
     const response = await apiClient.get<ApiResponse<PageResponse<JobDTO>>>('/jobs', {
       params: {
         search: params.search || undefined,
@@ -18,6 +27,10 @@ export const jobApi = {
         sortDirection: params.sortDirection || 'DESC',
       },
     });
+    if (isDefaultQuery) {
+      defaultJobsCache = response.data;
+      lastJobsFetchTime = Date.now();
+    }
     return response.data;
   },
 
@@ -28,6 +41,7 @@ export const jobApi = {
 
   ingestSeedJobs: async (): Promise<ApiResponse<string>> => {
     const response = await apiClient.post<ApiResponse<string>>('/jobs/ingest/seed');
+    defaultJobsCache = null;
     return response.data;
   },
 };

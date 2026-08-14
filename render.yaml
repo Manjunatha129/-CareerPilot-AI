@@ -1,0 +1,48 @@
+# ========================================================
+# CAREERPILOT AI - RENDER DEPLOYMENT BLUEPRINT (render.yaml)
+# ========================================================
+
+services:
+  # 1. FastAPI AI Microservice (Python)
+  - type: web
+    name: careerpilot-ai
+    env: python
+    region: singapore
+    rootDir: ai-service/careerpilot-ai
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash
+      - key: EMBEDDING_MODEL
+        value: gemini-embedding-2
+      - key: EMBEDDING_DIMENSION
+        value: "768"
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+
+  # 2. Spring Boot Core Backend (Java 21)
+  - type: web
+    name: careerpilot-api
+    env: java
+    region: singapore
+    rootDir: backend/careerpilot-api
+    buildCommand: ./mvnw clean package -DskipTests || mvn clean package -DskipTests
+    startCommand: java -jar target/careerpilot-api-1.0.0.jar
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USERNAME
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: AI_SERVICE_URL
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: UPLOAD_DIR
+        value: /tmp/uploads

@@ -7,6 +7,17 @@ from app.schemas.resume_schema import (
 )
 from app.prompts.resume_analysis_prompt import RESUME_ANALYSIS_PROMPT
 
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
+def _call_gemini_extraction(api_key: str, resume_text: str) -> str:
+    client = genai.Client(api_key=api_key)
+    prompt = RESUME_ANALYSIS_PROMPT.format(resume_text=resume_text)
+    response = client.models.generate_content(
+        model=config.GEMINI_MODEL,
+        contents=prompt,
+    )
+    return response.text.strip()
+
 def analyze_resume_text(resume_text: str) -> ResumeAnalysisResponse:
     """
     Sends resume text to Gemini API for structured extraction and validates output with Pydantic.
@@ -18,15 +29,10 @@ def analyze_resume_text(resume_text: str) -> ResumeAnalysisResponse:
     api_key = config.GEMINI_API_KEY
     if api_key and api_key.strip() and api_key != "your_gemini_api_key_here":
         try:
-            client = genai.Client(api_key=api_key)
-            prompt = RESUME_ANALYSIS_PROMPT.format(resume_text=resume_text)
-            
-            response = client.models.generate_content(
-                model=config.GEMINI_MODEL,
-                contents=prompt,
-            )
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_call_gemini_extraction, api_key, resume_text)
+                raw_output = future.result(timeout=3.0)
 
-            raw_output = response.text.strip()
             # Clean markdown code block fences if present
             if raw_output.startswith("```json"):
                 raw_output = raw_output[7:]
@@ -37,6 +43,8 @@ def analyze_resume_text(resume_text: str) -> ResumeAnalysisResponse:
 
             parsed_data = json.loads(raw_output.strip())
             return ResumeAnalysisResponse.model_validate(parsed_data)
+        except FuturesTimeoutError:
+            print("[Gemini Service Warning] Gemini API call timed out (>3.0s). Falling back to instant heuristic extraction.")
         except Exception as e:
             print(f"[Gemini Service Warning] Gemini API call failed: {e}. Falling back to heuristic extraction.")
 

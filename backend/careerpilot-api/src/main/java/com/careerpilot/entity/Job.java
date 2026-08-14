@@ -34,6 +34,9 @@ public class Job {
     @Column(name = "external_job_id")
     private String externalJobId;
 
+    @Column(name = "source_url", length = 1024)
+    private String sourceUrl;
+
     private String location;
 
     @Column(name = "work_mode")

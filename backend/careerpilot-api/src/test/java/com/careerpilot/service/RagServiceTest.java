@@ -70,7 +70,7 @@ public class RagServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.isHasSufficientContext()).isFalse();
-        assertThat(response.getAnswer()).contains("does not contain sufficient information");
+        assertThat(response.getAnswer()).contains("don't have enough relevant information");
         assertThat(response.getSources()).isEmpty();
     }
 

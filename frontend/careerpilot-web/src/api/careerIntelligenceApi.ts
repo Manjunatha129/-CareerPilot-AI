@@ -96,9 +96,18 @@ export interface CareerIntelligenceDTO {
   };
 }
 
+let careerIntelligenceCache: ApiResponse<CareerIntelligenceDTO> | null = null;
+let lastCareerFetchTime = 0;
+const CACHE_TTL_MS = 30000;
+
 export const careerIntelligenceApi = {
-  getCareerIntelligence: async (): Promise<ApiResponse<CareerIntelligenceDTO>> => {
+  getCareerIntelligence: async (forceRefresh = false): Promise<ApiResponse<CareerIntelligenceDTO>> => {
+    if (!forceRefresh && careerIntelligenceCache && (Date.now() - lastCareerFetchTime < CACHE_TTL_MS)) {
+      return careerIntelligenceCache;
+    }
     const response = await apiClient.get<ApiResponse<CareerIntelligenceDTO>>('/career-intelligence');
+    careerIntelligenceCache = response.data;
+    lastCareerFetchTime = Date.now();
     return response.data;
   },
 
@@ -107,6 +116,8 @@ export const careerIntelligenceApi = {
       query,
       targetJobId,
     });
+    careerIntelligenceCache = response.data;
+    lastCareerFetchTime = Date.now();
     return response.data;
   },
 };
