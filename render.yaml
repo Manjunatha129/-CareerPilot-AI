@@ -41,6 +41,20 @@ services:
     rootDir: backend/careerpilot-api
     dockerfilePath: Dockerfile
     envVars:
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://careerpilot-db:5432/careerpilot
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: careerpilot-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: careerpilot-db
+          property: password
+      - key: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+        value: org.postgresql.Driver
+      - key: SPRING_JPA_DATABASE_PLATFORM
+        value: org.hibernate.dialect.PostgreSQLDialect
       - key: DATABASE_URL
         value: jdbc:postgresql://careerpilot-db:5432/careerpilot
       - key: DATABASE_USERNAME
