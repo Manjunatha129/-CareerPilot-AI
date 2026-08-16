@@ -3,7 +3,7 @@
 # ========================================================
 
 services:
-  # 1. FastAPI AI Microservice (Python)
+  # 1. FastAPI AI Microservice (Python 3.11)
   - type: web
     name: careerpilot-ai
     env: python
@@ -15,7 +15,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-3.5-flash
+        value: gemini-flash-latest
       - key: EMBEDDING_MODEL
         value: gemini-embedding-2
       - key: EMBEDDING_DIMENSION
@@ -23,14 +23,13 @@ services:
       - key: CORS_ALLOWED_ORIGINS
         sync: false
 
-  # 2. Spring Boot Core Backend (Java 21)
+  # 2. Spring Boot Core Backend (Java 21 via Docker Container)
   - type: web
     name: careerpilot-api
-    env: java
+    env: docker
     region: singapore
     rootDir: backend/careerpilot-api
-    buildCommand: ./mvnw clean package -DskipTests || mvn clean package -DskipTests
-    startCommand: java -jar target/careerpilot-api-1.0.0.jar
+    dockerfilePath: backend/careerpilot-api/Dockerfile
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -45,4 +44,4 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: UPLOAD_DIR
-        value: /tmp/uploads
+        value: /app/uploads
