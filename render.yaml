@@ -2,6 +2,14 @@
 # CAREERPILOT AI - RENDER DEPLOYMENT BLUEPRINT (render.yaml)
 # ========================================================
 
+databases:
+  # 1. Managed PostgreSQL Database (with pgvector support)
+  - name: careerpilot-db
+    databaseName: careerpilot
+    user: careerpilot_user
+    plan: free
+    region: singapore
+
 services:
   # 1. FastAPI AI Microservice (Python 3.11)
   - type: web
@@ -32,11 +40,17 @@ services:
     dockerfilePath: backend/careerpilot-api/Dockerfile
     envVars:
       - key: DATABASE_URL
-        sync: false
+        value: jdbc:postgresql://careerpilot-db:5432/careerpilot
       - key: DATABASE_USERNAME
-        sync: false
+        fromDatabase:
+          name: careerpilot-db
+          property: user
       - key: DATABASE_PASSWORD
-        sync: false
+        fromDatabase:
+          name: careerpilot-db
+          property: password
+      - key: DATABASE_DRIVER
+        value: org.postgresql.Driver
       - key: AI_SERVICE_URL
         sync: false
       - key: CORS_ALLOWED_ORIGINS
