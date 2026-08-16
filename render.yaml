@@ -39,7 +39,7 @@ services:
     plan: free
     region: singapore
     rootDir: backend/careerpilot-api
-    dockerfilePath: backend/careerpilot-api/Dockerfile
+    dockerfilePath: Dockerfile
     envVars:
       - key: DATABASE_URL
         value: jdbc:postgresql://careerpilot-db:5432/careerpilot
