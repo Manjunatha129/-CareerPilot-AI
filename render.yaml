@@ -42,7 +42,9 @@ services:
     dockerfilePath: Dockerfile
     envVars:
       - key: SPRING_DATASOURCE_URL
-        value: jdbc:postgresql://careerpilot-db:5432/careerpilot
+        fromDatabase:
+          name: careerpilot-db
+          property: connectionString
       - key: SPRING_DATASOURCE_USERNAME
         fromDatabase:
           name: careerpilot-db
@@ -56,7 +58,9 @@ services:
       - key: SPRING_JPA_DATABASE_PLATFORM
         value: org.hibernate.dialect.PostgreSQLDialect
       - key: DATABASE_URL
-        value: jdbc:postgresql://careerpilot-db:5432/careerpilot
+        fromDatabase:
+          name: careerpilot-db
+          property: connectionString
       - key: DATABASE_USERNAME
         fromDatabase:
           name: careerpilot-db
