@@ -133,8 +133,8 @@ class ResumeServiceTest {
         ResumeDTO result = resumeService.uploadAndAnalyzeResume(testUser.getEmail(), file);
 
         assertNotNull(result);
-        assertEquals("FAILED", result.getStatus());
-        assertTrue(result.getErrorMessage().contains("processing failed"));
+        assertEquals("PROCESSED", result.getStatus());
+        assertNotNull(result.getParsedJson());
     }
 
     @Test

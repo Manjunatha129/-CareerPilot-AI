@@ -22,6 +22,7 @@ public class RawJobData {
     private String experienceLevel;
     private BigDecimal minSalary;
     private BigDecimal maxSalary;
+    private Boolean isInternship;
     private String description;
     private List<String> requiredSkills;
     private List<String> niceToHaveSkills;

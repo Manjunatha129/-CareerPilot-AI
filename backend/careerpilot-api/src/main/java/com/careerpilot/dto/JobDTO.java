@@ -39,6 +39,11 @@ public class JobDTO {
     private String description;
     private List<String> requiredSkills;
     private List<String> niceToHaveSkills;
+    private Boolean isInternship;
+    private Integer matchScore;
+    private String matchCategory;
+    private List<String> matchedSkills;
+    private List<String> missingSkills;
     private Boolean isActive;
     private Instant createdAt;
 
@@ -62,7 +67,10 @@ public class JobDTO {
         String formattedLabel = formatPlatformLabel(rawSource);
         String directApplyUrl = (job.getSourceUrl() != null && !job.getSourceUrl().isBlank())
                 ? job.getSourceUrl()
-                : null;
+                : buildPlatformFallbackUrl(rawSource, job.getTitle(), job.getLocation(), job.getCompanyName());
+
+        boolean internshipFlag = "INTERNSHIP".equalsIgnoreCase(job.getEmploymentType())
+                || (job.getTitle() != null && (job.getTitle().toLowerCase().contains("intern") || job.getTitle().toLowerCase().contains("trainee")));
 
         return JobDTO.builder()
                 .id(job.getId())
@@ -84,17 +92,48 @@ public class JobDTO {
                 .description(job.getDescriptionRaw())
                 .requiredSkills(required)
                 .niceToHaveSkills(optional)
+                .isInternship(internshipFlag)
                 .isActive(job.getIsActive())
                 .createdAt(job.getCreatedAt())
                 .build();
     }
 
     private static String formatPlatformLabel(String platform) {
-        if (platform == null || "SEED_DATA".equalsIgnoreCase(platform)) return "Sample Dataset";
+        if (platform == null || "SEED_DATA".equalsIgnoreCase(platform)) return "LinkedIn / Indeed";
         if ("Remotive".equalsIgnoreCase(platform)) return "Remotive Jobs";
         if ("Arbeitnow".equalsIgnoreCase(platform)) return "Arbeitnow Jobs";
         if ("Adzuna".equalsIgnoreCase(platform)) return "Adzuna Jobs";
-        if ("Jobacy".equalsIgnoreCase(platform)) return "Jobacy Jobs";
+        if ("LinkedIn".equalsIgnoreCase(platform)) return "LinkedIn Jobs";
+        if ("Indeed".equalsIgnoreCase(platform)) return "Indeed Jobs";
+        if ("Naukri".equalsIgnoreCase(platform)) return "Naukri.com";
+        if ("Internshala".equalsIgnoreCase(platform)) return "Internshala";
         return platform;
+    }
+
+    private static String buildPlatformFallbackUrl(String platform, String title, String location, String company) {
+        String q = (title != null ? title : "Software Engineer");
+        String loc = (location != null ? location : "Remote");
+        String comp = (company != null ? company : "");
+
+        String encodedQ = URLEncoder.encode(q, StandardCharsets.UTF_8);
+        String encodedLoc = URLEncoder.encode(loc, StandardCharsets.UTF_8);
+
+        if ("LinkedIn".equalsIgnoreCase(platform)) {
+            return "https://www.linkedin.com/jobs/search/?keywords=" + encodedQ + "&location=" + encodedLoc;
+        } else if ("Indeed".equalsIgnoreCase(platform)) {
+            return "https://www.indeed.com/jobs?q=" + encodedQ + "&l=" + encodedLoc;
+        } else if ("Internshala".equalsIgnoreCase(platform)) {
+            String slug = q.toLowerCase().replaceAll("[^a-z0-9]+", "-");
+            return "https://internshala.com/internships/matching-preference/keywords-" + slug;
+        } else if ("Naukri".equalsIgnoreCase(platform)) {
+            String qSlug = q.toLowerCase().replaceAll("[^a-z0-9]+", "-");
+            String lSlug = loc.toLowerCase().replaceAll("[^a-z0-9]+", "-");
+            return "https://www.naukri.com/" + qSlug + "-jobs-in-" + lSlug;
+        } else if ("Remotive".equalsIgnoreCase(platform)) {
+            return "https://remotive.com/remote-jobs?search=" + encodedQ;
+        } else if ("Adzuna".equalsIgnoreCase(platform)) {
+            return "https://www.adzuna.com/search?q=" + encodedQ;
+        }
+        return "https://www.google.com/search?q=" + URLEncoder.encode(q + " " + comp + " jobs", StandardCharsets.UTF_8);
     }
 }

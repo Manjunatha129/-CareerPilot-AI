@@ -25,8 +25,8 @@ public class AiServiceClient {
     public AiServiceClient(
             @Value("${careerpilot.ai.service-url:http://localhost:8000}") String aiServiceUrl) {
         org.springframework.http.client.SimpleClientHttpRequestFactory factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(2000);
-        factory.setReadTimeout(4000);
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(15000);
         this.restTemplate = new RestTemplate(factory);
         this.aiServiceUrl = aiServiceUrl;
     }

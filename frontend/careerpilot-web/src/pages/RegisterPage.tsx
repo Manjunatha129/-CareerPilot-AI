@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { Lock, Mail, User, CheckCircle } from 'lucide-react';
+import { Lock, Mail, User, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
   const { register } = useAuth();
@@ -13,6 +13,7 @@ export const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +44,7 @@ export const RegisterPage: React.FC = () => {
       setSuccessMessage('Registration successful! Redirecting to login...');
       setTimeout(() => {
         navigate('/login');
-      }, 1500);
+      }, 1200);
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Registration failed';
       setError(msg);
@@ -73,15 +74,18 @@ export const RegisterPage: React.FC = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="register-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
-            <label className="block text-xs font-semibold text-surface-700 uppercase tracking-wider">
+            <label htmlFor="fullName" className="block text-xs font-semibold text-surface-700 uppercase tracking-wider">
               Full Name
             </label>
             <div className="relative">
               <User className="w-5 h-5 text-surface-400 absolute left-3.5 top-3" />
               <input
+                id="fullName"
+                name="fullName"
                 type="text"
+                autoComplete="name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Jane Doe"
@@ -92,13 +96,16 @@ export const RegisterPage: React.FC = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-semibold text-surface-700 uppercase tracking-wider">
+            <label htmlFor="email" className="block text-xs font-semibold text-surface-700 uppercase tracking-wider">
               Email Address
             </label>
             <div className="relative">
               <Mail className="w-5 h-5 text-surface-400 absolute left-3.5 top-3" />
               <input
+                id="email"
+                name="email"
                 type="email"
+                autoComplete="username email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="jane@example.com"
@@ -109,34 +116,48 @@ export const RegisterPage: React.FC = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-semibold text-surface-700 uppercase tracking-wider">
+            <label htmlFor="password" className="block text-xs font-semibold text-surface-700 uppercase tracking-wider">
               Password
             </label>
             <div className="relative">
               <Lock className="w-5 h-5 text-surface-400 absolute left-3.5 top-3" />
               <input
-                type="password"
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-surface-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-white"
+                className="w-full pl-11 pr-11 py-2.5 rounded-xl border border-surface-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-white"
                 disabled={isLoading}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-3 text-surface-400 hover:text-surface-600 transition-colors"
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-semibold text-surface-700 uppercase tracking-wider">
+            <label htmlFor="confirmPassword" className="block text-xs font-semibold text-surface-700 uppercase tracking-wider">
               Confirm Password
             </label>
             <div className="relative">
               <Lock className="w-5 h-5 text-surface-400 absolute left-3.5 top-3" />
               <input
-                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-surface-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-white"
+                className="w-full pl-11 pr-11 py-2.5 rounded-xl border border-surface-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-white"
                 disabled={isLoading}
               />
             </div>
@@ -151,12 +172,14 @@ export const RegisterPage: React.FC = () => {
           </button>
         </form>
 
-        <p className="text-center text-xs text-surface-500">
-          Already have an account?{' '}
-          <Link to="/login" className="font-bold text-brand-600 hover:text-brand-700">
-            Log In
-          </Link>
-        </p>
+        <div className="pt-2 border-t border-surface-100 text-center">
+          <p className="text-xs text-surface-500">
+            Already have an account?{' '}
+            <Link to="/login" className="font-bold text-brand-600 hover:text-brand-700">
+              Log In
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

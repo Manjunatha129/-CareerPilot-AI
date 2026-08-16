@@ -1,6 +1,7 @@
 package com.careerpilot.service;
 
 import com.careerpilot.dto.JobDTO;
+import com.careerpilot.dto.JobSourceStatusDTO;
 import com.careerpilot.dto.PageResponse;
 import com.careerpilot.entity.Company;
 import com.careerpilot.entity.Job;
@@ -34,6 +35,11 @@ public class JobService {
     private final RemotiveJobSourceConnector remotiveJobSourceConnector;
     private final ArbeitnowJobSourceConnector arbeitnowJobSourceConnector;
     private final AdzunaJobSourceConnector adzunaJobSourceConnector;
+    private final LinkedInJobSourceConnector linkedInJobSourceConnector;
+    private final IndeedJobSourceConnector indeedJobSourceConnector;
+    private final NaukriJobSourceConnector naukriJobSourceConnector;
+    private final InternshalaJobSourceConnector internshalaJobSourceConnector;
+    private final List<JobSourceConnector> allConnectors;
     private final JobNormalizer jobNormalizer;
     private final JobValidator jobValidator;
     private final JobDeduplicator jobDeduplicator;
@@ -58,7 +64,7 @@ public class JobService {
     }
 
     /**
-     * Fetches real live job postings from public/official job APIs (Remotive, Arbeitnow, Adzuna).
+     * Fetches real live job postings from external job platforms (Remotive, Arbeitnow, Adzuna, LinkedIn, Indeed, Naukri, Internshala).
      */
     @Transactional
     public int fetchAndIngestLiveJobs(String search, String location) {
@@ -79,6 +85,26 @@ public class JobService {
         } catch (Exception e) {
             log.warn("Adzuna API fetch error: {}", e.getMessage());
         }
+        try {
+            liveJobs.addAll(linkedInJobSourceConnector.fetchRawJobsByQuery(search, location));
+        } catch (Exception e) {
+            log.warn("LinkedIn fetch error: {}", e.getMessage());
+        }
+        try {
+            liveJobs.addAll(indeedJobSourceConnector.fetchRawJobsByQuery(search, location));
+        } catch (Exception e) {
+            log.warn("Indeed fetch error: {}", e.getMessage());
+        }
+        try {
+            liveJobs.addAll(naukriJobSourceConnector.fetchRawJobsByQuery(search, location));
+        } catch (Exception e) {
+            log.warn("Naukri fetch error: {}", e.getMessage());
+        }
+        try {
+            liveJobs.addAll(internshalaJobSourceConnector.fetchRawJobsByQuery(search, location));
+        } catch (Exception e) {
+            log.warn("Internshala fetch error: {}", e.getMessage());
+        }
 
         if (!liveJobs.isEmpty()) {
             return processAndPersistRawJobs(liveJobs);
@@ -91,94 +117,102 @@ public class JobService {
         int processedCount = 0;
 
         for (RawJobData raw : rawJobs) {
-            RawJobData normalized = jobNormalizer.normalize(raw);
-            JobValidator.ValidationResult validation = jobValidator.validate(normalized);
-            if (!validation.isValid()) {
-                log.warn("Skipping invalid raw job (id={}): {}", raw.getId(), validation.getErrors());
-                continue;
-            }
-
-            // 1. Resolve Company (find or create)
-            Company company = companyRepository.findByNameIgnoreCase(normalized.getCompany())
-                    .orElseGet(() -> {
-                        Company newComp = Company.builder()
-                                .name(normalized.getCompany())
-                                .location(normalized.getLocation())
-                                .build();
-                        return companyRepository.save(newComp);
-                    });
-
-            // 2. Check Deduplication
-            Optional<Job> existingJobOpt = jobDeduplicator.findExistingJob(normalized, company.getId());
-
-            Job jobToSave;
-            if (existingJobOpt.isPresent()) {
-                jobToSave = existingJobOpt.get();
-                log.info("Updating existing duplicate job #{} ('{}' at '{}')", jobToSave.getId(), normalized.getTitle(), company.getName());
-                jobToSave.setCompanyId(company.getId());
-                jobToSave.setCompanyName(company.getName());
-                jobToSave.setTitle(normalized.getTitle());
-                jobToSave.setLocation(normalized.getLocation());
-                jobToSave.setWorkMode(normalized.getWorkMode());
-                jobToSave.setEmploymentType(normalized.getEmploymentType());
-                jobToSave.setExperienceLevel(normalized.getExperienceLevel());
-                jobToSave.setMinSalary(normalized.getMinSalary());
-                jobToSave.setMaxSalary(normalized.getMaxSalary());
-                jobToSave.setSourceUrl(normalized.getSourceUrl());
-                jobToSave.setDescriptionRaw(normalized.getDescription());
-            } else {
-                log.info("Inserting new job posting ('{}' at '{}')", normalized.getTitle(), company.getName());
-                jobToSave = Job.builder()
-                        .companyId(company.getId())
-                        .companyName(company.getName())
-                        .title(normalized.getTitle())
-                        .sourceName(normalized.getSourceName())
-                        .externalJobId(normalized.getId())
-                        .sourceUrl(normalized.getSourceUrl())
-                        .location(normalized.getLocation())
-                        .workMode(normalized.getWorkMode())
-                        .employmentType(normalized.getEmploymentType())
-                        .experienceLevel(normalized.getExperienceLevel())
-                        .minSalary(normalized.getMinSalary())
-                        .maxSalary(normalized.getMaxSalary())
-                        .descriptionRaw(normalized.getDescription())
-                        .isActive(true)
-                        .build();
-            }
-
-            Job savedJob = jobRepository.save(jobToSave);
-
-            // 3. Associate Required & Nice-to-Have Skills
-            jobSkillRepository.deleteByJobId(savedJob.getId());
-            List<JobSkill> skillsToSave = new ArrayList<>();
-
-            if (normalized.getRequiredSkills() != null) {
-                for (String skillName : normalized.getRequiredSkills()) {
-                    skillsToSave.add(JobSkill.builder()
-                            .jobId(savedJob.getId())
-                            .skillName(skillName)
-                            .isRequired(true)
-                            .weight(1.0)
-                            .build());
+            try {
+                RawJobData normalized = jobNormalizer.normalize(raw);
+                JobValidator.ValidationResult validation = jobValidator.validate(normalized);
+                if (!validation.isValid()) {
+                    log.warn("Skipping invalid raw job (id={}): {}", raw.getId(), validation.getErrors());
+                    continue;
                 }
-            }
 
-            if (normalized.getNiceToHaveSkills() != null) {
-                for (String skillName : normalized.getNiceToHaveSkills()) {
-                    skillsToSave.add(JobSkill.builder()
-                            .jobId(savedJob.getId())
-                            .skillName(skillName)
-                            .isRequired(false)
-                            .weight(0.5)
-                            .build());
+                // 1. Resolve Company (find or create)
+                Company company = companyRepository.findByNameIgnoreCase(normalized.getCompany())
+                        .orElseGet(() -> {
+                            Company newComp = Company.builder()
+                                    .name(normalized.getCompany())
+                                    .location(normalized.getLocation())
+                                    .build();
+                            return companyRepository.save(newComp);
+                        });
+
+                // 2. Check Deduplication
+                Optional<Job> existingJobOpt = jobDeduplicator.findExistingJob(normalized, company.getId());
+
+                Job jobToSave;
+                if (existingJobOpt.isPresent()) {
+                    jobToSave = existingJobOpt.get();
+                    log.info("Updating existing duplicate job #{} ('{}' at '{}')", jobToSave.getId(), normalized.getTitle(), company.getName());
+                    jobToSave.setCompanyId(company.getId());
+                    jobToSave.setCompanyName(company.getName());
+                    jobToSave.setTitle(normalized.getTitle());
+                    jobToSave.setLocation(normalized.getLocation());
+                    jobToSave.setWorkMode(normalized.getWorkMode());
+                    jobToSave.setEmploymentType(normalized.getEmploymentType());
+                    jobToSave.setExperienceLevel(normalized.getExperienceLevel());
+                    jobToSave.setMinSalary(normalized.getMinSalary());
+                    jobToSave.setMaxSalary(normalized.getMaxSalary());
+                    jobToSave.setSourceUrl(normalized.getSourceUrl());
+                    jobToSave.setDescriptionRaw(normalized.getDescription());
+                } else {
+                    log.info("Inserting new job posting ('{}' at '{}')", normalized.getTitle(), company.getName());
+                    jobToSave = Job.builder()
+                            .companyId(company.getId())
+                            .companyName(company.getName())
+                            .title(normalized.getTitle())
+                            .sourceName(normalized.getSourceName())
+                            .externalJobId(normalized.getId())
+                            .sourceUrl(normalized.getSourceUrl())
+                            .location(normalized.getLocation())
+                            .workMode(normalized.getWorkMode())
+                            .employmentType(normalized.getEmploymentType())
+                            .experienceLevel(normalized.getExperienceLevel())
+                            .minSalary(normalized.getMinSalary())
+                            .maxSalary(normalized.getMaxSalary())
+                            .descriptionRaw(normalized.getDescription())
+                            .isActive(true)
+                            .build();
                 }
-            }
 
-            if (!skillsToSave.isEmpty()) {
-                jobSkillRepository.saveAll(skillsToSave);
-            }
+                Job savedJob = jobRepository.save(jobToSave);
 
-            processedCount++;
+                // 3. Associate Required & Nice-to-Have Skills safely
+                List<JobSkill> existingSkills = jobSkillRepository.findByJobId(savedJob.getId());
+                if (existingSkills != null && !existingSkills.isEmpty()) {
+                    jobSkillRepository.deleteAll(existingSkills);
+                    jobSkillRepository.flush();
+                }
+                List<JobSkill> skillsToSave = new ArrayList<>();
+
+                if (normalized.getRequiredSkills() != null) {
+                    for (String skillName : normalized.getRequiredSkills()) {
+                        skillsToSave.add(JobSkill.builder()
+                                .jobId(savedJob.getId())
+                                .skillName(skillName)
+                                .isRequired(true)
+                                .weight(1.0)
+                                .build());
+                    }
+                }
+
+                if (normalized.getNiceToHaveSkills() != null) {
+                    for (String skillName : normalized.getNiceToHaveSkills()) {
+                        skillsToSave.add(JobSkill.builder()
+                                .jobId(savedJob.getId())
+                                .skillName(skillName)
+                                .isRequired(false)
+                                .weight(0.5)
+                                .build());
+                    }
+                }
+
+                if (!skillsToSave.isEmpty()) {
+                    jobSkillRepository.saveAll(skillsToSave);
+                }
+
+                processedCount++;
+            } catch (Exception e) {
+                log.warn("Could not persist individual raw job posting: {}", e.getMessage());
+            }
         }
 
         log.info("Finished job ingestion. Successfully processed {} jobs.", processedCount);
@@ -241,6 +275,28 @@ public class JobService {
         List<JobSkill> skills = jobSkillRepository.findByJobId(job.getId());
 
         return JobDTO.fromEntity(job, company, skills);
+    }
+
+    @Transactional(readOnly = true)
+    public List<JobSourceStatusDTO> getConnectedSources() {
+        List<JobSourceStatusDTO> statusList = new ArrayList<>();
+        if (allConnectors != null) {
+            for (JobSourceConnector connector : allConnectors) {
+                boolean configured = connector.isConfigured();
+                String name = connector.getSourceName();
+                String type = "SEED_DATA".equalsIgnoreCase(name) ? "SEED" : "API";
+                statusList.add(JobSourceStatusDTO.builder()
+                        .id(name.toLowerCase().replace(" ", "-"))
+                        .name(name)
+                        .type(type)
+                        .isConnected(configured)
+                        .isConfigured(configured)
+                        .statusMessage(configured ? "Active and connected" : "Credentials required in .env")
+                        .fetchedCount(0)
+                        .build());
+            }
+        }
+        return statusList;
     }
 
     private String cleanString(String s) {

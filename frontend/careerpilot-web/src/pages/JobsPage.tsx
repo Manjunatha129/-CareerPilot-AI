@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { jobApi } from '../api/jobApi';
-import { JobDTO, PageResponse } from '../types';
+import { JobDTO, PageResponse, JobSourceStatus } from '../types';
 import {
   Briefcase,
   Search,
@@ -18,7 +18,11 @@ import {
   BellRing,
   Sparkles,
   X,
-  ExternalLink
+  ExternalLink,
+  Target,
+  GraduationCap,
+  Globe,
+  Radio
 } from 'lucide-react';
 
 interface JobNotification {
@@ -33,7 +37,13 @@ interface JobNotification {
 }
 
 export const JobsPage: React.FC = () => {
+  const [viewTab, setViewTab] = useState<'recommended' | 'internships' | 'all'>('recommended');
   const [jobsData, setJobsData] = useState<PageResponse<JobDTO> | null>(null);
+  const [recommendedJobs, setRecommendedJobs] = useState<JobDTO[]>([]);
+  const [internshipJobs, setInternshipJobs] = useState<JobDTO[]>([]);
+  const [sources, setSources] = useState<JobSourceStatus[]>([]);
+  const [selectedSource, setSelectedSource] = useState<string>('');
+
   const [loading, setLoading] = useState<boolean>(true);
   const [ingesting, setIngesting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,10 +96,70 @@ export const JobsPage: React.FC = () => {
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   useEffect(() => {
-    fetchJobs();
-  }, [page, workMode, employmentType, experienceLevel]);
+    fetchJobSources();
+  }, []);
 
-  const fetchJobs = async () => {
+  useEffect(() => {
+    const params = {
+      search: search || undefined,
+      location: location || undefined,
+      workMode: workMode || undefined,
+      employmentType: employmentType || undefined,
+      experienceLevel: experienceLevel || undefined,
+      source: selectedSource || undefined,
+    };
+
+    if (viewTab === 'recommended') {
+      fetchRecommendedJobs(params);
+    } else if (viewTab === 'internships') {
+      fetchInternshipJobs(params);
+    } else {
+      fetchSearchJobs();
+    }
+  }, [viewTab, page, workMode, employmentType, experienceLevel, selectedSource]);
+
+  const fetchJobSources = async () => {
+    try {
+      const res = await jobApi.getJobSources();
+      if (res.success && res.data) {
+        setSources(res.data);
+      }
+    } catch (e) {
+      console.warn('Failed to load connected sources status', e);
+    }
+  };
+
+  const fetchRecommendedJobs = async (params: any = {}) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await jobApi.getRecommendedJobs(params, 15);
+      if (res.success && res.data) {
+        setRecommendedJobs(res.data);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to load resume-driven recommendations.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchInternshipJobs = async (params: any = {}) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await jobApi.getInternshipJobs(params, 15);
+      if (res.success && res.data) {
+        setInternshipJobs(res.data);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to load internship recommendations.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSearchJobs = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -99,6 +169,7 @@ export const JobsPage: React.FC = () => {
         workMode: workMode || undefined,
         employmentType: employmentType || undefined,
         experienceLevel: experienceLevel || undefined,
+        source: selectedSource || undefined,
         page,
         size: 10,
         sortBy: 'createdAt',
@@ -118,7 +189,26 @@ export const JobsPage: React.FC = () => {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(0);
-    fetchJobs();
+    const params = {
+      search: search || undefined,
+      location: location || undefined,
+      workMode: workMode || undefined,
+      employmentType: employmentType || undefined,
+      experienceLevel: experienceLevel || undefined,
+      source: selectedSource || undefined,
+    };
+    if (viewTab === 'recommended') {
+      fetchRecommendedJobs(params);
+    } else if (viewTab === 'internships') {
+      fetchInternshipJobs(params);
+    } else {
+      fetchSearchJobs();
+    }
+  };
+
+  const handleResumeDrivenSearch = async () => {
+    setViewTab('recommended');
+    await fetchRecommendedJobs();
   };
 
   const handleIngestSeedData = async () => {
@@ -130,7 +220,7 @@ export const JobsPage: React.FC = () => {
       if (response.success) {
         setSuccessMessage(response.message || 'Seed jobs successfully imported!');
         setPage(0);
-        await fetchJobs();
+        await fetchRecommendedJobs();
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Seed job ingestion failed.');
@@ -153,24 +243,47 @@ export const JobsPage: React.FC = () => {
     setWorkMode('');
     setEmploymentType('');
     setExperienceLevel('');
+    setSelectedSource('');
     setPage(0);
   };
+
+  // Determine current active jobs list based on active tab
+  const getActiveJobsList = (): JobDTO[] => {
+    if (viewTab === 'recommended') {
+      return recommendedJobs;
+    } else if (viewTab === 'internships') {
+      return internshipJobs;
+    } else {
+      return jobsData ? jobsData.content : [];
+    }
+  };
+
+  const activeJobsList = getActiveJobsList();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-300 pb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 flex items-center gap-3">
             <Briefcase className="w-8 h-8 text-orange-500" />
-            Job Intelligence Explorer
+            Resume-Driven Job Intelligence Engine
           </h1>
-          <p className="text-slate-600 text-sm mt-1">
-            Browse normalized, deduplicated job postings with real-time match alert notifications.
+          <p className="text-slate-600 text-sm mt-1 font-medium">
+            Personalized job & internship recommendations matched directly against your uploaded resume.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 self-start md:self-auto">
+        <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+          {/* Primary Action: Resume-Driven Search */}
+          <button
+            onClick={handleResumeDrivenSearch}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-500/20 transition-all cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-white" />
+            Find Jobs For Me
+          </button>
+
           {/* Notification Bell Button */}
           <div className="relative">
             <button
@@ -268,50 +381,47 @@ export const JobsPage: React.FC = () => {
             )}
           </div>
 
-          {/* Ingest Seed Data Trigger */}
+          {/* Ingest Seed Data Demo Fallback Trigger */}
           <button
             onClick={handleIngestSeedData}
             disabled={ingesting}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all cursor-pointer"
+            title="Import demo seed dataset as fallback"
           >
             {ingesting ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin text-orange-400" />
-                Ingesting...
-              </>
+              <RefreshCw className="w-4 h-4 animate-spin text-orange-400" />
             ) : (
-              <>
-                <Database className="w-4 h-4 text-orange-400" />
-                Import Seed Dataset
-              </>
+              <Database className="w-4 h-4 text-slate-400" />
             )}
+            <span className="hidden lg:inline">Import Seed Dataset</span>
           </button>
         </div>
       </div>
 
-      {/* Instant Job Alert Banner */}
-      {alertsEnabled && unreadCount > 0 && (
-        <div className="bg-gradient-to-r from-slate-900 via-orange-950/30 to-slate-900 border border-orange-500/30 rounded-xl p-4 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-orange-500/20 border border-orange-500/30 text-orange-400 flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-xs font-bold text-orange-300 uppercase tracking-wider flex items-center gap-2">
-                Job Match Alert ({unreadCount} New Instant Notifications)
-              </h3>
-              <p className="text-xs text-slate-300 mt-0.5">
-                New high-matching job postings are live: <span className="font-semibold text-slate-100">DevOps Specialist (94% Match), Frontend Engineer (89% Match), Senior Java Engineer (96% Match)</span>
-              </p>
-            </div>
+      {/* Connected Job Sources Bar */}
+      {sources.length > 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
+          <div className="flex items-center gap-2 text-slate-300 font-semibold">
+            <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+            <span>Authorized External Job Sources:</span>
           </div>
 
-          <button
-            onClick={() => setShowNotificationDrawer(true)}
-            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-orange-500/10 shrink-0 self-start sm:self-auto cursor-pointer flex items-center gap-1.5"
-          >
-            <Bell className="w-3.5 h-3.5" /> View Notifications
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {sources.map((src) => (
+              <span
+                key={src.id}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold border flex items-center gap-1.5 ${
+                  src.isConnected
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                    : 'bg-slate-950 text-slate-500 border-slate-800'
+                }`}
+                title={src.statusMessage}
+              >
+                <span className={`w-2 h-2 rounded-full ${src.isConnected ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                {src.name}
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
@@ -332,6 +442,45 @@ export const JobsPage: React.FC = () => {
           <button onClick={() => setError(null)} className="text-rose-400 hover:text-rose-200">✕</button>
         </div>
       )}
+
+      {/* View Mode Section Tabs */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 pb-2">
+        <button
+          onClick={() => setViewTab('recommended')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            viewTab === 'recommended'
+              ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
+              : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          <Target className="w-4 h-4" />
+          Recommended for You
+        </button>
+
+        <button
+          onClick={() => setViewTab('internships')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            viewTab === 'internships'
+              ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
+              : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          <GraduationCap className="w-4 h-4" />
+          Internships For You
+        </button>
+
+        <button
+          onClick={() => setViewTab('all')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            viewTab === 'all'
+              ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
+              : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          <Globe className="w-4 h-4" />
+          All Opportunities
+        </button>
+      </div>
 
       {/* Search & Filters Controls */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
@@ -360,7 +509,7 @@ export const JobsPage: React.FC = () => {
 
           <button
             type="submit"
-            className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-semibold text-sm rounded-lg transition-all shadow-md shadow-orange-500/10 cursor-pointer"
+            className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-sm rounded-lg border border-slate-700 transition-all cursor-pointer"
           >
             Search
           </button>
@@ -410,7 +559,20 @@ export const JobsPage: React.FC = () => {
               <option value="SENIOR">Senior Level</option>
             </select>
 
-            {(search || location || workMode || employmentType || experienceLevel) && (
+            {/* Job Source */}
+            <select
+              value={selectedSource}
+              onChange={(e) => { setSelectedSource(e.target.value); setPage(0); }}
+              className="bg-slate-950 border border-slate-800 text-slate-300 rounded-md px-3 py-1.5 text-xs focus:outline-none focus:border-orange-500"
+            >
+              <option value="">All Sources</option>
+              <option value="Adzuna">Adzuna</option>
+              <option value="Remotive">Remotive</option>
+              <option value="Arbeitnow">Arbeitnow</option>
+              <option value="SEED_DATA">Sample Dataset</option>
+            </select>
+
+            {(search || location || workMode || employmentType || experienceLevel || selectedSource) && (
               <button
                 onClick={clearFilters}
                 className="text-xs text-orange-400 hover:text-orange-300 underline font-medium cursor-pointer"
@@ -420,8 +582,8 @@ export const JobsPage: React.FC = () => {
             )}
           </div>
 
-          <div className="text-xs text-slate-400">
-            {jobsData ? `${jobsData.totalElements} job postings found` : ''}
+          <div className="text-xs text-slate-400 font-medium">
+            {activeJobsList.length} opportunity recommendations loaded
           </div>
         </div>
       </div>
@@ -429,25 +591,25 @@ export const JobsPage: React.FC = () => {
       {/* Main Jobs Listing */}
       {loading ? (
         <div className="py-16 text-center text-slate-400 text-sm flex items-center justify-center gap-2">
-          <RefreshCw className="w-5 h-5 animate-spin text-orange-500" /> Fetching job postings...
+          <RefreshCw className="w-5 h-5 animate-spin text-orange-500" /> Fetching live resume-driven job recommendations...
         </div>
-      ) : !jobsData || jobsData.content.length === 0 ? (
+      ) : activeJobsList.length === 0 ? (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-400">
           <Briefcase className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-slate-200">No Job Postings Found</h3>
+          <h3 className="text-lg font-semibold text-slate-200">No Recommendations Available</h3>
           <p className="text-sm text-slate-400 mt-1 max-w-md mx-auto">
-            No active job postings match your search filters. Click "Import Seed Dataset" above to populate sample job data.
+            Upload your resume or click "Find Jobs For Me" to fetch live personalized job recommendations.
           </p>
           <button
-            onClick={handleIngestSeedData}
-            className="mt-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 cursor-pointer"
+            onClick={handleResumeDrivenSearch}
+            className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg cursor-pointer"
           >
-            Load Sample Jobs
+            Find Jobs For Me
           </button>
         </div>
       ) : (
         <div className="space-y-4">
-          {jobsData.content.map((job) => (
+          {activeJobsList.map((job) => (
             <div
               key={job.id}
               className="bg-slate-900 border border-slate-800 hover:border-slate-700/80 rounded-xl p-6 shadow-xl transition-all flex flex-col md:flex-row md:items-center justify-between gap-6"
@@ -458,15 +620,30 @@ export const JobsPage: React.FC = () => {
                     <Link to={`/jobs/${job.id}`}>{job.title}</Link>
                   </h3>
 
+                  {/* Official Match Score Badge */}
+                  {job.matchScore !== undefined && job.matchScore !== null && (
+                    <span className={`px-2.5 py-0.5 text-[11px] font-extrabold rounded-full border shadow-sm ${
+                      job.matchScore >= 80
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 ring-1 ring-emerald-500/20'
+                        : job.matchScore >= 60
+                        ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+                        : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                    }`}>
+                      🎯 {job.matchScore}% Match
+                    </span>
+                  )}
+
                   {/* Work Mode Badge */}
                   <span className="px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-slate-800 text-slate-300 border border-slate-700">
                     {job.workMode}
                   </span>
 
-                  {/* Employment Type Badge */}
-                  <span className="px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-slate-800 text-slate-400 border border-slate-700">
-                    {job.employmentType?.replace('_', ' ')}
-                  </span>
+                  {/* Internship Badge */}
+                  {job.isInternship && (
+                    <span className="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/30">
+                      🎓 Internship
+                    </span>
+                  )}
 
                   {/* Open Source Job Platform Badge */}
                   <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
@@ -509,15 +686,23 @@ export const JobsPage: React.FC = () => {
 
                 {/* Required Skills Chips */}
                 {job.requiredSkills && job.requiredSkills.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {job.requiredSkills.map((skill, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-slate-950 text-slate-300 border border-slate-800"
-                      >
-                        {skill}
-                      </span>
-                    ))}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[11px] text-slate-500 font-medium">Skills:</span>
+                    {job.requiredSkills.map((skill, idx) => {
+                      const isMatched = job.matchedSkills?.includes(skill.toLowerCase()) || job.matchedSkills?.includes(skill);
+                      return (
+                        <span
+                          key={idx}
+                          className={`px-2.5 py-0.5 text-[11px] font-medium rounded-md border ${
+                            isMatched
+                              ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 font-semibold'
+                              : 'bg-slate-950 text-slate-300 border-slate-800'
+                          }`}
+                        >
+                          {isMatched ? '✓ ' : ''}{skill}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -551,8 +736,8 @@ export const JobsPage: React.FC = () => {
             </div>
           ))}
 
-          {/* Pagination Controls */}
-          {jobsData && jobsData.totalPages > 1 && (
+          {/* Pagination Controls for All Opportunities tab */}
+          {viewTab === 'all' && jobsData && jobsData.totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-slate-800 pt-6">
               <span className="text-xs text-slate-400">
                 Page <strong className="text-slate-200">{jobsData.page + 1}</strong> of{' '}

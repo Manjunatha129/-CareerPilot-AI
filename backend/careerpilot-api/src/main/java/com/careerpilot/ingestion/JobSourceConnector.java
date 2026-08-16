@@ -13,4 +13,11 @@ public interface JobSourceConnector {
      * Returns the unique string identifier for this job source (e.g. "SEED_DATA").
      */
     String getSourceName();
+
+    /**
+     * Checks if this connector has valid API credentials and is enabled.
+     */
+    default boolean isConfigured() {
+        return true;
+    }
 }

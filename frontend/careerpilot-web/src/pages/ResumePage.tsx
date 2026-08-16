@@ -742,14 +742,31 @@ export const ResumePage: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {parsedAnalysis.education.map((edu, i) => (
-                  <div key={i} className="bg-slate-950/60 p-4 rounded-lg border border-slate-800/80">
-                    <h4 className="text-sm font-semibold text-slate-100">{edu.degree}</h4>
-                    <p className="text-xs text-orange-300 mt-0.5">{edu.field}</p>
-                    <p className="text-xs text-slate-400 mt-1">{edu.institution}</p>
+                  <div key={i} className="bg-slate-950/60 p-4 rounded-lg border border-slate-800/80 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-100">{edu.degree || 'Degree'}</h4>
+                        {edu.field && <p className="text-xs text-orange-400 font-medium mt-0.5">{edu.field}</p>}
+                      </div>
+                      {edu.cgpa && (
+                        <span className="px-2.5 py-1 text-[11px] font-bold rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex-shrink-0">
+                          🏆 {edu.cgpa}
+                        </span>
+                      )}
+                    </div>
+
+                    {edu.institution && edu.institution !== 'University / College' && (
+                      <p className="text-xs text-slate-300 font-medium flex items-center gap-1.5 pt-1">
+                        🏛️ {edu.institution}
+                      </p>
+                    )}
+
                     {edu.graduationYear && (
-                      <span className="inline-block text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded mt-2 border border-slate-800">
-                        {edu.graduationYear}
-                      </span>
+                      <div className="pt-1">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-mono text-slate-400 bg-slate-900 px-2.5 py-0.5 rounded border border-slate-800">
+                          📅 {edu.graduationYear}
+                        </span>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -765,22 +782,50 @@ export const ResumePage: React.FC = () => {
                 Projects
               </h3>
 
-              <div className="space-y-3">
-                {parsedAnalysis.projects.map((proj, i) => (
-                  <div key={i} className="bg-slate-950/60 p-4 rounded-lg border border-slate-800/80 space-y-1.5">
-                    <h4 className="text-sm font-semibold text-slate-100">{proj.projectName}</h4>
-                    <p className="text-xs text-slate-300 leading-relaxed">{proj.description}</p>
-                    {proj.technologies && proj.technologies.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {proj.technologies.map((t, idx) => (
-                          <span key={idx} className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+              <div className="space-y-4">
+                {parsedAnalysis.projects.map((proj, i) => {
+                  let displayTitle = proj.projectName || '';
+                  let displayDesc = proj.description || '';
+
+                  // Clean title if raw narrative text was returned
+                  if (!displayTitle || displayTitle.length > 70 || displayTitle.toLowerCase().startsWith('built ') || displayTitle.toLowerCase().startsWith('developed ')) {
+                    if (displayTitle.includes('|')) {
+                      const parts = displayTitle.split('|');
+                      displayTitle = parts[0].trim();
+                      if (!displayDesc) displayDesc = parts.slice(1).join(' ').trim();
+                    } else if (displayTitle.includes(':')) {
+                      const parts = displayTitle.split(':');
+                      displayTitle = parts[0].trim();
+                      if (!displayDesc) displayDesc = parts.slice(1).join(' ').trim();
+                    } else {
+                      const words = (displayTitle || displayDesc).split(' ');
+                      displayTitle = words.slice(0, 6).join(' ') + (words.length > 6 ? '...' : '');
+                    }
+                  }
+
+                  return (
+                    <div key={i} className="bg-slate-950/60 p-4 rounded-lg border border-slate-800/80 space-y-2">
+                      <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                        <span className="text-orange-400 font-mono text-xs">#{i + 1}</span>
+                        {displayTitle}
+                      </h4>
+                      
+                      {displayDesc && displayDesc !== displayTitle && (
+                        <p className="text-xs text-slate-300 leading-relaxed pl-5">{displayDesc}</p>
+                      )}
+
+                      {proj.technologies && proj.technologies.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1 pl-5">
+                          {proj.technologies.map((t, idx) => (
+                            <span key={idx} className="text-[10px] font-medium bg-slate-900 text-orange-300 px-2 py-0.5 rounded border border-slate-800">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

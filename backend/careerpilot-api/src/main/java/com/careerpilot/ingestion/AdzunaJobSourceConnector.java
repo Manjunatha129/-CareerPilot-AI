@@ -36,6 +36,11 @@ public class AdzunaJobSourceConnector implements JobSourceConnector {
     }
 
     @Override
+    public boolean isConfigured() {
+        return appId != null && !appId.isBlank() && appKey != null && !appKey.isBlank();
+    }
+
+    @Override
     public List<RawJobData> fetchRawJobs() {
         return fetchRawJobsByQuery("developer", "us");
     }

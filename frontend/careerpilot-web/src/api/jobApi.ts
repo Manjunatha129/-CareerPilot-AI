@@ -1,11 +1,46 @@
 import { apiClient } from './client';
-import { ApiResponse, JobDTO, PageResponse, JobSearchParams } from '../types';
+import { ApiResponse, JobDTO, PageResponse, JobSearchParams, JobSourceStatus } from '../types';
 
 let defaultJobsCache: ApiResponse<PageResponse<JobDTO>> | null = null;
 let lastJobsFetchTime = 0;
 const CACHE_TTL_MS = 30000;
 
 export const jobApi = {
+  getRecommendedJobs: async (params: JobSearchParams = {}, limit: number = 15): Promise<ApiResponse<JobDTO[]>> => {
+    const response = await apiClient.get<ApiResponse<JobDTO[]>>('/jobs/recommended', {
+      params: {
+        search: params.search || undefined,
+        location: params.location || undefined,
+        workMode: params.workMode || undefined,
+        employmentType: params.employmentType || undefined,
+        experienceLevel: params.experienceLevel || undefined,
+        source: params.source || undefined,
+        limit,
+      }
+    });
+    return response.data;
+  },
+
+  getInternshipJobs: async (params: JobSearchParams = {}, limit: number = 15): Promise<ApiResponse<JobDTO[]>> => {
+    const response = await apiClient.get<ApiResponse<JobDTO[]>>('/jobs/internships', {
+      params: {
+        search: params.search || undefined,
+        location: params.location || undefined,
+        workMode: params.workMode || undefined,
+        employmentType: params.employmentType || undefined,
+        experienceLevel: params.experienceLevel || undefined,
+        source: params.source || undefined,
+        limit,
+      }
+    });
+    return response.data;
+  },
+
+  getJobSources: async (): Promise<ApiResponse<JobSourceStatus[]>> => {
+    const response = await apiClient.get<ApiResponse<JobSourceStatus[]>>('/jobs/sources');
+    return response.data;
+  },
+
   searchJobs: async (params: JobSearchParams = {}, forceRefresh = false): Promise<ApiResponse<PageResponse<JobDTO>>> => {
     const isDefaultQuery = !params.search && !params.location && !params.workMode && !params.employmentType && (!params.page || params.page === 0);
     if (isDefaultQuery && !forceRefresh && defaultJobsCache && (Date.now() - lastJobsFetchTime < CACHE_TTL_MS)) {

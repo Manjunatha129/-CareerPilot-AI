@@ -47,10 +47,14 @@
 * `GET /api/resumes/{id}`: Retrieve detailed metadata and parsed structured analysis JSON for a specific user-owned resume.
 * `DELETE /api/resumes/{id}`: Delete a user-owned resume record and its local physical file.
 
-### 2.4 Jobs Ingestion & Search (`/api/jobs`)
-* `POST /api/jobs/ingest/seed`: Idempotently ingests synthetic seed jobs from `sample-data/jobs/seed-jobs.json`. Performs normalization, validation, company deduplication, skill association, and job deduplication.
-* `GET /api/jobs`: Paginated multi-filter search endpoint (`?search=java&location=San+Francisco&workMode=HYBRID&employmentType=FULL_TIME&experienceLevel=ENTRY&company=TechScale&source=SEED_DATA&page=0&size=10&sortBy=createdAt&sortDirection=DESC`). Returns `PageResponse<JobDTO>` with `SYNTHETIC / SAMPLE DATA` attribution labels.
-* `GET /api/jobs/{id}`: Fetch complete job details by ID, including company information, required skills, and nice-to-have skills.
+### 2.4 Jobs Ingestion, Real-Time Search & Resume Recommendations (`/api/jobs`)
+* `GET /api/jobs/recommended`: Generates personalized job recommendations by extracting candidate's `JobSearchProfile` from uploaded resume & profile, querying active external job sources, deduplicating, and computing official 6-facet match scores. Returns ranked `List<JobDTO>`.
+* `GET /api/jobs/internships`: Generates personalized internship recommendations for entry-level and student candidates. Returns ranked `List<JobDTO>` (internships only).
+* `GET /api/jobs/sources`: Returns list of connected external job sources (Adzuna, Remotive, Arbeitnow, LinkedIn, Indeed, Naukri, Internshala) and their configuration status.
+* `POST /api/jobs/ingest/seed`: Idempotently ingests synthetic seed jobs from `sample-data/jobs/seed-jobs.json` as a demo fallback.
+* `POST /api/jobs/ingest/live`: Real-time query-driven fetch from authorized external APIs.
+* `GET /api/jobs`: Paginated multi-filter search endpoint (`?search=java&location=San+Francisco&workMode=HYBRID&employmentType=FULL_TIME&experienceLevel=ENTRY&source=Adzuna&page=0&size=10`). Returns `PageResponse<JobDTO>`.
+* `GET /api/jobs/{id}`: Fetch complete job details by ID, including company information, required skills, and direct external application URL.
 
 ### 2.5 Hybrid Matching & Recommendations (`/api/jobs/{jobId}/match`)
 * `GET /api/jobs/{jobId}/match`: Calculates explainable 6-facet deterministic candidate-job match score for authenticated user (Skill 35%, Experience 20%, Education 10%, Location 10%, Semantic 15% via `gemini-embedding-2`, Preferences 10%). Returns overall score (0-100), category (`STRONG_MATCH`, `GOOD_MATCH`, `PARTIAL_MATCH`, `LOW_MATCH`), breakdown scores, matched skills, missing skills, deterministic strengths/gaps, and fail-safe Gemini explanation.

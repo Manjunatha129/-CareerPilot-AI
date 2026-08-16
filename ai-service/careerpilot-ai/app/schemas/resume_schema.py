@@ -8,10 +8,11 @@ class ContactInfo(BaseModel):
     location: Optional[str] = Field(None, description="City, state, or country of candidate")
 
 class EducationItem(BaseModel):
-    degree: Optional[str] = Field(None, description="Degree name (e.g. B.S., M.S., Ph.D.)")
-    institution: Optional[str] = Field(None, description="University or College name")
+    degree: Optional[str] = Field(None, description="Degree name (e.g. B.Tech, M.S., Diploma)")
+    institution: Optional[str] = Field(None, description="University, College, or School name")
     field: Optional[str] = Field(None, description="Field of study or major")
-    graduationYear: Optional[str] = Field(None, description="Graduation year or date range")
+    graduationYear: Optional[str] = Field(None, description="Graduation year or date range (e.g. 2027 or May 2027)")
+    cgpa: Optional[str] = Field(None, description="CGPA, GPA, percentage, or score (e.g. 8.96/10 or 93.47%)")
 
 class SkillsBreakdown(BaseModel):
     programmingLanguages: List[str] = Field(default_factory=list, description="Programming languages (e.g. Java, Python, TypeScript)")

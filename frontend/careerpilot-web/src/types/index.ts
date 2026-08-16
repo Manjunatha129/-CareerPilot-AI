@@ -81,6 +81,7 @@ export interface EducationItem {
   institution?: string;
   field?: string;
   graduationYear?: string;
+  cgpa?: string;
 }
 
 export interface SkillsBreakdown {
@@ -166,8 +167,23 @@ export interface JobDTO {
   description: string;
   requiredSkills: string[];
   niceToHaveSkills: string[];
+  isInternship?: boolean;
+  matchScore?: number;
+  matchCategory?: string;
+  matchedSkills?: string[];
+  missingSkills?: string[];
   isActive: boolean;
   createdAt?: string;
+}
+
+export interface JobSourceStatus {
+  id: string;
+  name: string;
+  type: string;
+  isConnected: boolean;
+  isConfigured: boolean;
+  statusMessage: string;
+  fetchedCount: number;
 }
 
 export interface PageResponse<T> {

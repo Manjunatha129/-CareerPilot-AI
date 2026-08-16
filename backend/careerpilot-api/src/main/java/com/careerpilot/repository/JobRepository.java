@@ -23,11 +23,11 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     @Query("SELECT j FROM Job j WHERE j.isActive = true AND " +
            "(:search IS NULL OR LOWER(j.title) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(j.descriptionRaw) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(j.companyName) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
            "(:location IS NULL OR LOWER(j.location) LIKE LOWER(CONCAT('%', :location, '%'))) AND " +
-           "(:workMode IS NULL OR j.workMode = :workMode) AND " +
-           "(:employmentType IS NULL OR j.employmentType = :employmentType) AND " +
-           "(:experienceLevel IS NULL OR j.experienceLevel = :experienceLevel) AND " +
+           "(:workMode IS NULL OR LOWER(j.workMode) LIKE LOWER(CONCAT('%', :workMode, '%')) OR LOWER(REPLACE(j.workMode, '_', '')) LIKE LOWER(CONCAT('%', REPLACE(:workMode, '_', ''), '%'))) AND " +
+           "(:employmentType IS NULL OR LOWER(j.employmentType) LIKE LOWER(CONCAT('%', :employmentType, '%')) OR LOWER(REPLACE(j.employmentType, '_', '')) LIKE LOWER(CONCAT('%', REPLACE(:employmentType, '_', ''), '%'))) AND " +
+           "(:experienceLevel IS NULL OR LOWER(j.experienceLevel) LIKE LOWER(CONCAT('%', :experienceLevel, '%'))) AND " +
            "(:company IS NULL OR LOWER(j.companyName) LIKE LOWER(CONCAT('%', :company, '%'))) AND " +
-           "(:source IS NULL OR j.sourceName = :source)")
+           "(:source IS NULL OR LOWER(j.sourceName) LIKE LOWER(CONCAT('%', :source, '%')))")
     Page<Job> searchJobs(
             @Param("search") String search,
             @Param("location") String location,
